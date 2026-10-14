@@ -1,0 +1,11 @@
+# salidas de compilacion
+build/
+out/
+*.class
+TinyPlusIDE.jar
+# codigo TM generado a partir de los ejemplos
+ejemplos/*.tm
+# IDEs
+.idea/
+*.iws
+.vscode/
