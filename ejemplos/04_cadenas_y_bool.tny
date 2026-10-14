@@ -1,0 +1,29 @@
+{ Cadenas (string) y booleanos }
+string nombre, saludo;
+bool mayor;
+int edad;
+
+function string repetir(string s, int veces)
+    string r;
+    while veces > 0 do
+        r := r + s;
+        veces := veces - 1
+    end;
+    return r
+end;
+
+write "Como te llamas?";
+read nombre;
+saludo := "Hola, " + nombre + "!";
+write saludo;
+write "Que edad tienes?";
+read edad;
+mayor := edad >= 18;
+write mayor;
+if mayor and nombre <> "" then
+    write "Bienvenido " + nombre
+else
+    write "Acceso restringido"
+end;
+if nombre = "Tiny" then write "Te llamas como el lenguaje" end;
+write repetir("ja", 3)
