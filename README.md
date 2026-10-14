@@ -181,15 +181,3 @@ controlar desde fuera:
 
 ---
 
-## 6. Trabajo en equipo con Git
-
-El enunciado exige usar Git y repartir el trabajo en los 4 módulos (ver la tabla de la sección 2).
-Para empezar el repositorio:
-```
-git init && git add . && git commit -m "Base Tiny++"
-git checkout -b modulo1-frontend   # una rama por módulo/integrante; merge a main con revisión
-```
-Recuerden que en la defensa **cada integrante** debe poder explicar cualquier parte del proyecto:
-el flujo de ejecución, el manejo de memoria en la TM (secciones 3 y 4) y la lógica del código.
-Una buena forma de prepararse es recorrer con el depurador `ejemplos/02_funciones_recursivas.tny`
-(marcos de pila), `03_arreglos.tny` (cálculo de direcciones) y `04_cadenas_y_bool.tny` (heap).
