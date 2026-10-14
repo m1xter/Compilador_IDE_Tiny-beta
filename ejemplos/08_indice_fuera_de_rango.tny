@@ -1,0 +1,8 @@
+{ Error en tiempo de ejecucion: el generador verifica los limites de los arreglos }
+int v[3], i;
+i := 0;
+while i <= 3 do       { el ultimo valor de i (3) se sale del arreglo }
+    v[i] := i * i;
+    write v[i];
+    i := i + 1
+end

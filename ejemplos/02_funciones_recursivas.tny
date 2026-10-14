@@ -1,0 +1,40 @@
+{ Funciones, procedimientos, recursion y paso de parametros por valor }
+int n;
+
+function int factorial(int x)
+    if x <= 1 then
+        return 1
+    else
+        return x * factorial(x - 1)
+    end
+end;
+
+function int fibonacci(int k)
+    if k < 2 then return k end;
+    return fibonacci(k - 1) + fibonacci(k - 2)
+end;
+
+function int potencia(int base, int exp)
+    int r;                    { variable local de la funcion }
+    r := 1;
+    while exp > 0 do
+        r := r * base;
+        exp := exp - 1        { modificar el parametro no afecta al llamador }
+    end;
+    return r
+end;
+
+procedure tabla(int hasta)
+    int i;
+    i := 0;
+    while i <= hasta do
+        write factorial(i);
+        i := i + 1
+    end
+end;
+
+n := 6;
+tabla(n);
+write fibonacci(10);
+write potencia(2, 10);
+write n
