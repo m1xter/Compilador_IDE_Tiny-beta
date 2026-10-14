@@ -1,0 +1,262 @@
+package ve.edu.unet;
+
+import java_cup.runtime.*;
+import ve.edu.unet.nodosAST.*;
+import ve.edu.unet.semantico.Tipo;
+
+
+parser code {:
+
+	/* Lista donde se acumulan los errores (la comparte con el lexico y el semantico) */
+	private ListaErrores errores = new ListaErrores();
+
+	public parser(java_cup.runtime.Scanner s, SymbolFactory sf, ListaErrores errores){
+		this(s, sf);
+		this.errores = errores;
+	}
+
+	private String describir(Symbol s){
+		if(s == null || s.sym == sym.EOF) return "fin de archivo";
+		if(s.value != null) return "'" + s.value + "'";
+		return sym.terminalNames[s.sym];
+	}
+
+	/* CUP llama a este metodo cada vez que encuentra un token inesperado */
+	@Override
+	public void syntax_error(Symbol s){
+		int linea = (s != null && s.left > 0) ? s.left : 1;
+		errores.agregar(ErrorCompilacion.Fase.SINTACTICO, linea, "token inesperado " + describir(s));
+	}
+
+	/* Cuando no se puede recuperar del error se termina el analisis sin lanzar excepcion */
+	@Override
+	public void unrecovered_syntax_error(Symbol s){
+		int linea = (s != null && s.left > 0) ? s.left : 1;
+		errores.agregar(ErrorCompilacion.Fase.SINTACTICO, linea, "no fue posible continuar el analisis cerca de " + describir(s));
+		done_parsing();
+	}
+
+	@Override
+	public void report_error(String message, Object info){ /* ya reportado en syntax_error */ }
+
+:}
+
+action code {:
+	private NodoBase ast=null;
+
+	//Debe ser llamada solo despues de un parse(), en caso contrario retornara null siempre;
+	public NodoBase getASTroot(){
+		return ast;
+	}
+
+	/* Fija la linea del codigo fuente en el nodo y lo devuelve */
+	private NodoBase L(NodoBase nodo, int linea){
+		if(nodo != null) nodo.setLinea(linea);
+		return nodo;
+	}
+
+	/* Agrega "nuevo" al final de la lista de hermanos que empieza en "lista" */
+	private NodoBase encadenar(NodoBase lista, NodoBase nuevo){
+		if(lista == null) return nuevo;
+		if(nuevo == null) return lista;
+		NodoBase hijoActual = lista;
+		while(hijoActual.TieneHermano()){
+			hijoActual = hijoActual.getHermanoDerecha();
+		}
+		hijoActual.setHermanoDerecha(nuevo);
+		return lista;
+	}
+:}
+
+/* Simbolos Terminales */
+
+terminal IF, THEN, ELSE, END, REPEAT, UNTIL, READ, WRITE;
+terminal WHILE, DO, INT, BOOL, STRING, FUNCTION, PROCEDURE, RETURN;
+terminal TRUE, FALSE, AND, OR, NOT;
+terminal String ID;
+terminal String NUM;
+terminal String CADENA;
+terminal ASSIGN, EQ, NE, LT, LE, GT, GE;
+terminal PLUS, MINUS, TIMES, OVER;
+terminal LPAREN, RPAREN, LBRACKET, RBRACKET, COMMA, SEMI;
+
+/* Simbolos No Terminales */
+non terminal program;
+non terminal NodoBase stmt_seq;
+non terminal NodoBase stmt;
+non terminal NodoBase if_stmt;
+non terminal NodoBase repeat_stmt;
+non terminal NodoBase while_stmt;
+non terminal NodoBase assign_stmt;
+non terminal NodoBase read_stmt;
+non terminal NodoBase write_stmt;
+non terminal NodoBase decl_stmt;
+non terminal NodoBase decl_list;
+non terminal NodoBase decl_item;
+non terminal NodoBase func_decl;
+non terminal NodoBase param_list;
+non terminal NodoBase params_opt;
+non terminal NodoBase param;
+non terminal NodoBase call;
+non terminal NodoBase arg_list;
+non terminal NodoBase args_opt;
+non terminal NodoBase return_stmt;
+non terminal NodoBase variable;
+non terminal Tipo     tipo;
+non terminal NodoBase exp;
+non terminal NodoBase and_exp;
+non terminal NodoBase not_exp;
+non terminal NodoBase rel_exp;
+non terminal NodoBase simple_exp;
+non terminal NodoBase term;
+non terminal NodoBase factor;
+
+
+/* REGLAS GRAMATICALES */
+program     ::= stmt_seq:s	{: ast = s; :}
+		|	/* programa vacio */	{: ast = null; :}
+		;
+
+/* Las sentencias se separan con ';'. Se acepta un ';' final opcional antes de end/else/until */
+stmt_seq    ::= stmt_seq:ini SEMI stmt:sent	{: RESULT = encadenar(ini, sent); :}
+		| stmt_seq:ini SEMI	{: RESULT = ini; :}
+		| stmt:sent	{: RESULT = sent; :}
+		;
+
+stmt        ::= if_stmt:s		{: RESULT = s; :}
+		| repeat_stmt:s		{: RESULT = s; :}
+		| while_stmt:s		{: RESULT = s; :}
+		| assign_stmt:s		{: RESULT = s; :}
+		| read_stmt:s		{: RESULT = s; :}
+		| write_stmt:s		{: RESULT = s; :}
+		| decl_stmt:s		{: RESULT = s; :}
+		| func_decl:s		{: RESULT = s; :}
+		| call:s			{: RESULT = s; :}
+		| return_stmt:s		{: RESULT = s; :}
+		| error				{: RESULT = null; :}
+		;
+
+/* ---------- declaraciones de variables:  int a, b, v[10] ---------- */
+decl_stmt   ::= tipo:t decl_list:lista	{:
+			for(NodoBase d = lista; d != null; d = d.getHermanoDerecha())
+				((NodoDeclaracion)d).setTipoDeclarado(t);
+			RESULT = lista;
+			:}
+		;
+
+tipo        ::= INT		{: RESULT = Tipo.INT; :}
+		| BOOL		{: RESULT = Tipo.BOOL; :}
+		| STRING	{: RESULT = Tipo.STRING; :}
+		;
+
+decl_list   ::= decl_list:lista COMMA decl_item:d	{: RESULT = encadenar(lista, d); :}
+		| decl_item:d	{: RESULT = d; :}
+		;
+
+decl_item   ::= ID:nombre	{: RESULT = L(new NodoDeclaracion(null, nombre, -1), nombreleft); :}
+		| ID:nombre LBRACKET NUM:tam RBRACKET	{: RESULT = L(new NodoDeclaracion(null, nombre, Integer.parseInt(tam)), nombreleft); :}
+		;
+
+/* ---------- subrutinas ---------- */
+func_decl   ::= FUNCTION:f tipo:t ID:nombre LPAREN params_opt:ps RPAREN stmt_seq:cuerpo END
+			{: RESULT = L(new NodoFuncion(t, nombre, ps, cuerpo), fleft); :}
+		| PROCEDURE:p ID:nombre LPAREN params_opt:ps RPAREN stmt_seq:cuerpo END
+			{: RESULT = L(new NodoFuncion(Tipo.VOID, nombre, ps, cuerpo), pleft); :}
+		;
+
+params_opt  ::= param_list:ps	{: RESULT = ps; :}
+		|	/* sin parametros */	{: RESULT = null; :}
+		;
+
+param_list  ::= param_list:ps COMMA param:p	{: RESULT = encadenar(ps, p); :}
+		| param:p	{: RESULT = p; :}
+		;
+
+param       ::= tipo:t ID:nombre	{: RESULT = L(new NodoParametro(t, nombre), nombreleft); :}
+		;
+
+call        ::= ID:nombre LPAREN args_opt:args RPAREN	{: RESULT = L(new NodoLlamada(nombre, args), nombreleft); :}
+		;
+
+args_opt    ::= arg_list:a	{: RESULT = a; :}
+		|	/* sin argumentos */	{: RESULT = null; :}
+		;
+
+arg_list    ::= arg_list:a COMMA exp:e	{: RESULT = encadenar(a, e); :}
+		| exp:e	{: RESULT = e; :}
+		;
+
+return_stmt ::= RETURN:r exp:e	{: RESULT = L(new NodoRetorno(e), rleft); :}
+		| RETURN:r	{: RESULT = L(new NodoRetorno(null), rleft); :}
+		;
+
+/* ---------- sentencias de Tiny ---------- */
+if_stmt     ::= IF:i exp:ex THEN stmt_seq:pthen END	{: RESULT = L(new NodoIf(ex,pthen), ileft); :}
+		| IF:i exp:ex THEN stmt_seq:pthen ELSE stmt_seq:pelse END	{: RESULT = L(new NodoIf(ex,pthen,pelse), ileft); :}
+		;
+
+repeat_stmt ::= REPEAT:r stmt_seq:cuerpo UNTIL exp:prueba	{: RESULT = L(new NodoRepeat(cuerpo,prueba), rleft); :}
+		;
+
+while_stmt  ::= WHILE:w exp:prueba DO stmt_seq:cuerpo END	{: RESULT = L(new NodoWhile(prueba,cuerpo), wleft); :}
+		;
+
+assign_stmt ::= variable:v ASSIGN exp:ex	{: RESULT = L(new NodoAsignacion(v,ex), v.getLinea()); :}
+		;
+
+read_stmt   ::= READ:r variable:v	{: RESULT = L(new NodoLeer(v), rleft); :}
+		;
+
+write_stmt  ::= WRITE:w exp:ex	{: RESULT = L(new NodoEscribir(ex), wleft); :}
+		;
+
+/* destino de asignacion o read: x  |  A[expresion] */
+variable    ::= ID:nombre	{: RESULT = L(new NodoIdentificador(nombre), nombreleft); :}
+		| ID:nombre LBRACKET exp:indice RBRACKET	{: RESULT = L(new NodoArreglo(nombre, indice), nombreleft); :}
+		;
+
+/* ---------- expresiones (de menor a mayor precedencia) ----------
+ *   or  <  and  <  not  <  relacionales  <  + -  <  * /  <  - unario
+ */
+exp         ::= exp:exI OR:o and_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.o,exD), oleft); :}
+		| and_exp:ex	{: RESULT = ex; :}
+		;
+
+and_exp     ::= and_exp:exI AND:o not_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.y,exD), oleft); :}
+		| not_exp:ex	{: RESULT = ex; :}
+		;
+
+not_exp     ::= NOT:o not_exp:ex	{: RESULT = L(new NodoOperacion(null,tipoOp.no,ex), oleft); :}
+		| rel_exp:ex	{: RESULT = ex; :}
+		;
+
+rel_exp     ::= simple_exp:exI LT:o simple_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.menor,exD), oleft); :}
+		| simple_exp:exI LE:o simple_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.menorIgual,exD), oleft); :}
+		| simple_exp:exI GT:o simple_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.mayor,exD), oleft); :}
+		| simple_exp:exI GE:o simple_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.mayorIgual,exD), oleft); :}
+		| simple_exp:exI EQ:o simple_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.igual,exD), oleft); :}
+		| simple_exp:exI NE:o simple_exp:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.diferente,exD), oleft); :}
+		| simple_exp:ex	{: RESULT = ex; :}
+		;
+
+simple_exp  ::= simple_exp:exI PLUS:o term:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.mas,exD), oleft); :}
+		| simple_exp:exI MINUS:o term:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.menos,exD), oleft); :}
+		| term:ex	{: RESULT = ex; :}
+		;
+
+term        ::= term:exI TIMES:o factor:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.por,exD), oleft); :}
+		| term:exI OVER:o factor:exD	{: RESULT = L(new NodoOperacion(exI,tipoOp.entre,exD), oleft); :}
+		| factor:ex	{: RESULT = ex; :}
+		;
+
+factor      ::= LPAREN exp:ex RPAREN	{: RESULT = ex; :}
+		| NUM:valor	{: RESULT = L(new NodoValor(Integer.parseInt(valor)), valorleft); :}
+		| CADENA:valor	{: RESULT = L(new NodoCadena(valor), valorleft); :}
+		| TRUE:t	{: RESULT = L(new NodoBooleano(true), tleft); :}
+		| FALSE:f	{: RESULT = L(new NodoBooleano(false), fleft); :}
+		| ID:nombre	{: RESULT = L(new NodoIdentificador(nombre), nombreleft); :}
+		| ID:nombre LBRACKET exp:indice RBRACKET	{: RESULT = L(new NodoArreglo(nombre, indice), nombreleft); :}
+		| call:c	{: RESULT = c; :}
+		/* menos unario: -x se construye como 0 - x */
+		| MINUS:m factor:ex	{: RESULT = L(new NodoOperacion(L(new NodoValor(0), mleft),tipoOp.menos,ex), mleft); :}
+		;
