@@ -1,0 +1,26 @@
+{ Este programa contiene errores SEMANTICOS a proposito }
+int a, v[5];
+bool b;
+string s;
+
+function int doble(int n)
+    return n * 2
+end;
+
+procedure p(string t)
+    write t
+end;
+
+a := noDeclarada + 1;     { variable no declarada }
+b := a + 1;               { asignar int a bool }
+s := "x" + 3;             { + entre string e int }
+if a then write a end;    { condicion no booleana }
+a := doble(true);         { tipo de argumento incorrecto }
+a := doble(1, 2);         { cantidad de argumentos incorrecta }
+p(5);                     { string esperado }
+a := p("hola");           { procedimiento usado como valor }
+v := 3;                   { arreglo sin indice }
+a[2] := 1;                { a no es arreglo }
+v[b] := 1;                { indice no entero }
+int a;                    { redeclaracion }
+return 4                  { return fuera de funcion }

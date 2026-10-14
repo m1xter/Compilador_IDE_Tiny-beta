@@ -1,0 +1,8 @@
+{ Este programa contiene errores LEXICOS y SINTACTICOS a proposito }
+int x, y;
+x := 3 +;
+y := 2 # 4;
+if x < y then
+    write x
+end end;
+write "cadena sin cerrar
