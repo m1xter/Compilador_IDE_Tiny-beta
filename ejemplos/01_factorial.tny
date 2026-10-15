@@ -1,0 +1,12 @@
+{ Version Tiny++ del factorial clasico de Tiny:
+  ahora las variables se declaran y la condicion es bool }
+int x, fact;
+read x; { leer un entero }
+if 0 < x then { no calcular si x <= 0 }
+  fact := 1;
+  repeat
+    fact := fact * x;
+    x := x - 1
+  until x = 0;
+  write fact  { factorial de x }
+end

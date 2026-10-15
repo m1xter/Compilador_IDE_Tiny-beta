@@ -1,0 +1,33 @@
+{ Arreglos unidimensionales: indices con expresiones compuestas y ordenamiento burbuja }
+int A[10], i, j, tmp, n;
+bool cambio;
+
+n := 10;
+{ llenar en orden inverso usando un indice compuesto }
+i := 0;
+while i < 5 do
+    A[i*2+1] := 100 - i;
+    A[i*2] := 50 - i * 3;
+    i := i + 1
+end;
+
+{ ordenamiento burbuja }
+repeat
+    cambio := false;
+    j := 0;
+    while j < n - 1 do
+        if A[j] > A[j+1] then
+            tmp := A[j];
+            A[j] := A[j+1];
+            A[j+1] := tmp;
+            cambio := true
+        end;
+        j := j + 1
+    end
+until not cambio;
+
+i := 0;
+while i < n do
+    write A[i];
+    i := i + 1
+end
